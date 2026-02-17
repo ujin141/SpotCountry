@@ -45,31 +45,9 @@ export default function Header() {
   }, []);
 
   const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-        // Fetch latest profile data to ensure avatar is up to date
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle();
-        
-        if (profile) {
-            // Merge profile data into user object for display
-            setUser({
-                ...user,
-                user_metadata: {
-                    ...user.user_metadata,
-                    full_name: profile.name,
-                    avatar_url: profile.avatar_url,
-                }
-            });
-        } else {
-            setUser(user);
-        }
-    } else {
-        setUser(null);
-    }
+    // 서버 세션 API 사용 (쿠키 기반 - OAuth 콜백 직후에도 동작)
+    const { user } = await fetch('/api/auth/session').then(r => r.json()).catch(() => ({ user: null }));
+    setUser(user ?? null);
   };
 
   const handleLogout = async () => {
