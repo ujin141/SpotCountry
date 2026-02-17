@@ -27,30 +27,34 @@ const AdContext = createContext<AdContextType | undefined>(undefined);
 export function AdProvider({ children }: { children: React.ReactNode }) {
   const [ads, setAds] = useState<Ad[]>([]);
 
-  // 초기 데이터 로드 (DB에서 가져오기)
+  const fetchAds = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ads')
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (error) {
+        const msg = String(error.message || error.details || '');
+        if (msg.includes('aborted') || msg.includes('AbortError')) return;
+        console.error('Error fetching ads:', error);
+      } else if (data) {
+        const formattedAds = data.map((ad: any) => ({
+          ...ad,
+          imageUrl: ad.image_url, 
+          positionLabel: ad.position === 'main-hero' ? '메인 홈 > 상단' : '국가 상세 > 헤더 하단'
+        }));
+        setAds(formattedAds);
+      }
+    } catch (e: any) {
+      if (e?.name === 'AbortError' || e?.message?.includes?.('aborted')) return;
+      console.error('Error fetching ads:', e);
+    }
+  };
+
   useEffect(() => {
     fetchAds();
   }, []);
-
-  const fetchAds = async () => {
-    const { data, error } = await supabase
-      .from('ads')
-      .select('*')
-      .order('id', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching ads:', error);
-      // 테이블이 없을 경우를 대비해 콘솔에만 찍고 넘어가거나 임시 데이터 사용 가능
-    } else if (data) {
-      // DB 컬럼명(snake_case)을 앱 내부 변수명(camelCase)으로 매핑
-      const formattedAds = data.map((ad: any) => ({
-        ...ad,
-        imageUrl: ad.image_url, 
-        positionLabel: ad.position === 'main-hero' ? '메인 홈 > 상단' : '국가 상세 > 헤더 하단'
-      }));
-      setAds(formattedAds);
-    }
-  };
 
   const addAd = async (newAd: Omit<Ad, 'id' | 'clicks' | 'status'>) => {
     const { data, error } = await supabase
